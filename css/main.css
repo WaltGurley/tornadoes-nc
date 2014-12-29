@@ -1,0 +1,7 @@
+.start-of-page{
+  margin-top: 50px;
+}
+
+#map {
+  height: calc(100vh - 50px);
+}
