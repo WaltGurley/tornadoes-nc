@@ -1,7 +1,14 @@
+var southWest = L.latLng(34, -83.5),
+  northEast = L.latLng(37, -75.5),
+  bounds = L.latLngBounds(southWest, northEast);
+
 var map = L.map('map', {
-  center: [35.7806, -78.6389],
-  zoom: 3
+  // center: [35.7806, -78.6389],ß
+  minZoom: 7,
+  maxBounds: bounds
 });
+
+map.fitBounds(bounds);
 
 L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(map);
 
