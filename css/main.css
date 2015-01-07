@@ -3,13 +3,33 @@
 }
 
 #map {
-  height: calc(50vh - 50px);
+  height: 50vh;
 }
 
-.tornado-paths {
+.tornado-path {
   stroke-width: 2px;
 }
 
-svg {
-  position: relative;
+.key-svg {
+  width: 100%;
+  height: 40vh;
+}
+
+.key-title{,
+  alignment-baseline: central;
+  font-weight: bold;
+}
+
+.check-box {
+  stroke: #000;
+  stroke-width: 2px;
+}
+
+.compass-svg {
+  width: 100%;
+  height: 40vh;
+}
+
+.axis {
+  opacity: 0.6;
 }
