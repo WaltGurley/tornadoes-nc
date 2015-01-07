@@ -56,6 +56,12 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
       "opacity": 1
     });
 
+    //Filter data to select only tornadoes with start/stop lat/lon coordinates
+    //for tornado degree direction
+    var directionData = tornadoes.features.filter(function(d) {
+      return d.properties.ELAT !== "0.0";
+    });
+
   createKey();
   createCompass();
   updateView();
@@ -125,7 +131,9 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
             .attr("opacity", 1);
           d3.selectAll(".compass-path." + box.datum())
             .transition()
-            .attr("width", d3.select(".compass-svg").style("height").split("p")[0] / 2 - 7);
+            .attr("width", function(d) { return (d.properties.MAG_INT + 2) / 5 *
+              (d3.select(".compass-svg").style("height").split("p")[0] / 2 - 7);
+            });
         } else {
           box.attr("fill", "#fff");
           d3.selectAll(".tornado-path." + box.datum())
@@ -135,7 +143,6 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
             .transition()
             .attr("width", "0px");
         }
-
       });
 
     //Add season text next to symbols
@@ -166,20 +173,15 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
       compassHeight = parseInt(compass.style("height").split("p")[0]),
       rectHeight = 2;
 
-    //Filter data to select only tornadoes with start/stop lat/lon coordinates
-    var availableData = tornadoes.features.filter( function(d) {
-      return d.properties.ELAT !== "0.0";
-    });
-
     //Add paths to diagram showing direction relative to compass
     compass.selectAll("rect")
-      .data(availableData)
+      .data(directionData)
       .enter().append("rect")
       .attr({
         "class": function(d) { return "compass-path " + d.properties.SEASON; },
-        "x": compassWidth / 2 + 5 + "px",
+        "x": compassWidth / 2 + 2 + "px",
         "y": compassHeight / 2 - rectHeight / 2 + "px",
-        "width": compassHeight / 2 - 10,
+        "width": function(d) { return (d.properties.MAG_INT + 2) / 5 * compassHeight / 2 - 7; },
         "height": rectHeight + "px",
         "transform": function(d) { return "rotate(" +
           -d.properties.ANGLE * (180 / Math.PI) + "," +
@@ -187,6 +189,7 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
         "fill": function(d) { return seasonColor(d.properties.SEASON); }
       });
 
+    //Add NS and EW axes
     var axes = compass.append("g")
       .attr("class", "axis");
 
