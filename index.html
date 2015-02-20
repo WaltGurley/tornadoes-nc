@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/main.css">
   </head>
   <body>
-    <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <nav class="navbar navbar-default" role="navigation">
       <div class="container">
         <div class="container">
           <div class="navbar-header">
@@ -30,9 +30,16 @@
 
     <div class="container-fluid start-of-page">
       <div class="row">
-        <div class="col-lg-12" id="map"></div>
-        <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12" id="mapKey"></div>
-        <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12" id="pathCompass"></div>
+        <div class="col-lg-12">
+          <h2>NC Tornado Season <small>Tornadoes by season from 1950-2013</small></h2>
+        </div>
+        <div class="col-lg-10 col-lg-offset-1 col-md-6 vis" id="map"></div>
+        <div class="col-lg-9 vis" id="graph"></div>
+        <div class="col-lg-3 col-md-3 col-sm-12 col-xs-12 vis" id="pathCompass"></div>
+        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 text-center">
+          <h3>Season</h3>
+        </div>
+        <div class="col-lg-8 col-lg-offset-2 col-md-12 col-sm-12 col-xs-12" id="mapKey"></div>
       </div>
     </div>
 

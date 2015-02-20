@@ -10,9 +10,8 @@ var map = L.map("map", {
 
 map.fitBounds(bounds);
 
-L.tileLayer('http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png', {
-  attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  subdomains: 'abcd',
+L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+	attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
 }).addTo(map);
 
 //var museum = L.marker([35.7822,-78.6394]).addTo(map);
@@ -23,7 +22,6 @@ var svg = d3.select(map.getPanes().overlayPane).append("svg"),
 
 //Load geojson data and process and add to map
 d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
-
   //This function projects the tornado path data into Leaflet Lat/Lon
   function projectPoint(x, y) {
     var point = map.latLngToLayerPoint(new L.LatLng(y, x));
@@ -37,13 +35,13 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
   //Color tornado paths based on season
   function seasonColor(season) {
     if (season === "Spring") {
-      return "#aaff7f";
+      return "#00c99a";
     } else if (season === "Summer") {
       return "#fbd528";
     } else if (season === "Fall") {
       return "#ff5500";
     } else if (season === "Winter") {
-      return "#7eaed9";
+      return "#425e89";
     }
   }
 
@@ -62,11 +60,10 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
       return d.properties.ELAT !== "0.0";
     });
 
-  createKey();
-  createCompass();
   updateView();
   map.on("viewreset", updateView);
 
+  //Redraw d3 map items on zoom and pan
   function updateView() {
     var bounds = tornadoPaths.bounds(tornadoes),
       topLeft = bounds[0],
@@ -85,104 +82,174 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
     tornado.attr("d", tornadoPaths);
   }
 
-  //Create key to describe map
-  function createKey() {
-    var key = d3.select("#mapKey").append("svg")
-      .attr("class", "key-svg");
-    var yPadding = 50,
-      xPadding = 25,
-      seasons = ["Spring", "Summer", "Fall", "Winter"];
-
-    //Create path symbols
-    key.selectAll("rect")
-      .data(seasons)
-      .enter().append("rect")
+  //Create key and compass svg and get size metrics
+  var key = d3.select("#mapKey");
+  var graph = d3.select("#graph").append("svg")
       .attr({
-        "x": xPadding + 30 + "px",
-        "y": function(d, i) { return i * 30 + yPadding - 2 + "px"; },
-        "fill": function(d) { return seasonColor(d); },
-        "width": "30px",
-        "height": "4px"
-      });
+        "class": "graph-svg",
+        // "shape-rendering": "crispEdges"
+      }),
+    graphWidth = parseInt(graph.style("width").split("p")[0]),
+    graphHeight = parseInt(graph.style("height").split("p")[0]),
+    graphPaddingVert = 25,
+    graphPaddingHor = 15,
+    maxLength; //Holder for count of tornadoes occurring on most active day
 
-    var checkBoxes = key.append("g");
+  var compass = d3.select("#pathCompass").append("svg").attr("class", "compass-svg"),
+    compassWidth = parseInt(compass.style("width").split("p")[0]),
+    compassHeight = parseInt(compass.style("height").split("p")[0]),
+    minorLength = compassWidth > compassHeight ? compassHeight - 10 : compassWidth - 10,
+    rectHeight = 2;
 
-    checkBoxes.selectAll("rect")
-      .data(seasons)
-      .enter().append("rect")
+  createKey();
+  createGraph();
+  createCompass();
+
+  function createKey() {
+    var seasons = ["Spring", "Summer", "Fall", "Winter"],
+      xPadding = 10, yPadding = 10,
+      boxSide = 50;
+
+    var keyItem = d3.select("#mapKey")
+      .selectAll("key-svg")
+        .data(seasons)
+        .enter().append("svg")
+          .attr("class", "key-svg");
+
+    //Add buttons to toggle data on/off
+    keyItem.append("rect")
       .attr({
         "class": function(d) { return "check-box " + d; },
-        "x": xPadding + "px",
-        "y": function(d, i) { return i * 30 + yPadding - 10 + "px"; },
+        "x": xPadding,
+        "y": yPadding,
+        "rx": 5,
+        "ry": 5,
         "fill": function(d) { return seasonColor(d); },
-        "width": "20px",
-        "height": "20px"
+        "width": boxSide,
+        "height": boxSide
       });
 
-    d3.selectAll(".check-box")
-      .on("click", function() {
-        var box = d3.select(this),
-          color = seasonColor(box.datum());
-
-        if (box.attr("fill") === "#fff") {
-          box.attr("fill", color);
-          d3.selectAll(".tornado-path." + box.datum())
-            .transition()
-            .attr("opacity", 1);
-          d3.selectAll(".compass-path." + box.datum())
-            .transition()
-            .attr("width", function(d) { return (d.properties.MAG_INT + 2) / 5 *
-              (d3.select(".compass-svg").style("height").split("p")[0] / 2 - 7);
-            });
-        } else {
-          box.attr("fill", "#fff");
-          d3.selectAll(".tornado-path." + box.datum())
-            .transition()
-            .attr("opacity", 0);
-          d3.selectAll(".compass-path." + box.datum())
-            .transition()
-            .attr("width", "0px");
-        }
+    //Add map symbol
+    keyItem.append("rect")
+      .attr({
+        "x": xPadding * 2 + boxSide,
+        "y": yPadding + boxSide / 2 - 2,
+        "fill": function(d) { return seasonColor(d); },
+        "width": 30,
+        "height": 4
       });
 
     //Add season text next to symbols
-    key.selectAll("text")
-      .data(seasons)
-      .enter().append("text")
+    keyItem.append("text")
       .attr({
-        "x": xPadding + 70 + "px",
-        "y": function(d, i) { return i * 30 + yPadding + "px"; },
+        "class": "svg-text",
+        "x": xPadding * 3 + boxSide + 30,
+        "y": yPadding + boxSide / 2,
         "alignment-baseline": "central"
       })
       .text(function(d) { return d; });
 
-      //Add key title
-    key.append("text")
-      .attr({
-        "class": "key-title",
-        "x": xPadding + 30 + "px",
-        "y": "30px"
-      })
-      .text("Season of Tornado Occurrence");
+    //Add interactivity to buttons
+    d3.selectAll(".check-box")
+    .on("click", function() {
+      var box = d3.select(this),
+      color = seasonColor(box.datum());
+
+      if (box.attr("fill") === "#fff") {
+        box.attr("fill", color);
+        d3.selectAll(".tornado-path." + box.datum())
+          .transition()
+          .attr("opacity", 1);
+        d3.selectAll(".compass-path." + box.datum())
+          .transition()
+          .attr("width", function(d) { return (d.properties.MAG_INT + 1) / 5 *
+            (minorLength / 2 - 7);
+          });
+        d3.selectAll(".graph-path." + box.datum())
+          .transition()
+          .attr({
+            "y": function(d) {
+              return graphHeight - graphPaddingVert -
+                (graphHeight - graphPaddingVert * 2) * (d.value.length / maxLength);
+            },
+            "height": function(d) {
+              return (graphHeight - graphPaddingVert * 2) * (d.value.length / maxLength);
+            }
+          });
+      } else {
+        box.attr("fill", "#fff");
+        d3.selectAll(".tornado-path." + box.datum())
+          .transition()
+          .attr("opacity", 0);
+        d3.selectAll(".compass-path." + box.datum())
+          .transition()
+          .attr("width", "0px");
+        d3.selectAll(".graph-path." + box.datum())
+          .transition()
+          .attr({
+            "y": function(d) { return graphHeight - graphPaddingVert; },
+            "height": "0px"
+          });
+      }
+    });
+  }
+
+  function createGraph() {
+    //Create bar graph of tornadoes by day of year (0-366)
+    var timeFormat = d3.time.format("%j"),
+    tornadoDate = d3.nest()
+      .key(function(d) { return parseInt(timeFormat(new Date(d.DATE))); })
+      .map(tornadoes.features.map(function(d) { return d.properties; }) );
+
+    //Set up axes for graph
+    var timeScale = d3.time.scale()
+      .domain([new Date(2012, 0, 1), new Date(2012, 11, 31)])
+      .range([graphPaddingHor, graphWidth - graphPaddingHor]);
+    var xAxis = d3.svg.axis()
+      .scale(timeScale)
+      .tickFormat(d3.time.format("%b"))
+      .orient("bottom");
+
+    //Max count of tornadoes that have occurred on one day
+    maxLength = d3.max(d3.values(tornadoDate), function(d) { return d.length; });
+
+    graph.selectAll("rect")
+      .data(d3.entries(tornadoDate))
+      .enter().append("rect")
+        .attr({
+          "class": function(d) { return "graph-path " + d.value[0].SEASON; },
+          "x": function(d) {
+            return (graphWidth - graphPaddingHor * 2) / 366 * d.key + graphPaddingHor;
+          },
+          "y": function(d) {
+            return graphHeight - graphPaddingVert -
+              (graphHeight - graphPaddingVert * 2) * (d.value.length / maxLength);
+          },
+          "width": (graphWidth - graphPaddingHor * 2) / 366,
+          "height": function(d) {
+            return (graphHeight - graphPaddingVert * 2) * (d.value.length / maxLength);
+          },
+          "fill": function(d) { return seasonColor(d.value[0].SEASON); }
+        });
+
+    graph.append("g")
+      .attr("class", "graph-axis")
+  		.attr("transform", "translate(0," + (graphHeight - graphPaddingVert) + ")")
+      .call(xAxis);
+
   }
 
   function createCompass() {
-    var compass = d3.select("#pathCompass").append("svg")
-      .attr("class", "compass-svg");
-    var compassWidth = parseInt(compass.style("width").split("p")[0]),
-      compassHeight = parseInt(compass.style("height").split("p")[0]),
-      rectHeight = 2;
-
     //Add paths to diagram showing direction relative to compass
     compass.selectAll("rect")
       .data(directionData)
       .enter().append("rect")
       .attr({
         "class": function(d) { return "compass-path " + d.properties.SEASON; },
-        "x": compassWidth / 2 + 2 + "px",
-        "y": compassHeight / 2 - rectHeight / 2 + "px",
-        "width": function(d) { return (d.properties.MAG_INT + 2) / 5 * compassHeight / 2 - 7; },
-        "height": rectHeight + "px",
+        "x": compassWidth / 2 + 2,
+        "y": compassHeight / 2 - rectHeight / 2,
+        "width": function(d) { return (d.properties.MAG_INT + 1) / 5 * minorLength / 2 - 7; },
+        "height": rectHeight,
         "transform": function(d) { return "rotate(" +
           -d.properties.ANGLE * (180 / Math.PI) + "," +
           compassWidth / 2 + "," + compassHeight / 2 + ")"; },
@@ -195,21 +262,65 @@ d3.json("js/TornadoesNCwgs84.geojson", function(tornadoes) {
 
     axes.append("rect")
       .attr({
-        "class": "x-axis",
-        "x": compassWidth / 2 - compassHeight / 2,
-        "y": compassHeight / 2 - rectHeight / 2 + "px",
-        "width": compassHeight,
+        "class": "x axis-line",
+        "x": compassWidth / 2 - minorLength / 2,
+        "y": compassHeight / 2 - rectHeight / 2,
+        "width": minorLength,
         "height": rectHeight
       });
 
-    axes.append("rect")
+      axes.append("rect")
       .attr({
-        "class": "y-axis",
-        "x": compassWidth / 2 - rectHeight / 2 + "px",
-        "y": "0px",
+        "class": "y axis-line",
+        "x": compassWidth / 2 - rectHeight / 2,
+        "y": compassHeight / 2 - minorLength / 2,
         "width": rectHeight,
-        "height": compassHeight
+        "height": minorLength
       });
+
+    axes.append("text")
+      .attr({
+        "class": "svg-text",
+        "x": compassWidth / 2 + -minorLength / 2,
+        "y": compassHeight / 2,
+        "font-size": 20,
+        "alignment-baseline": "central",
+        "text-anchor": "start"
+      })
+      .text("W");
+
+    axes.append("text")
+      .attr({
+        "class": "svg-text",
+        "x": compassWidth / 2 + minorLength / 2,
+        "y": compassHeight / 2,
+        "font-size": 20,
+        "alignment-baseline": "central",
+        "text-anchor": "end"
+      })
+      .text("E");
+
+    axes.append("text")
+      .attr({
+        "class": "svg-text",
+        "x": compassWidth / 2,
+        "y": compassHeight / 2 + -minorLength / 2,
+        "font-size": 20,
+        "alignment-baseline": "hanging",
+        "text-anchor": "middle"
+      })
+      .text("N");
+
+    axes.append("text")
+      .attr({
+        "class": "svg-text",
+        "x": compassWidth / 2,
+        "y": compassHeight / 2 + minorLength / 2,
+        "font-size": 20,
+        "alignment-baseline": "baseline",
+        "text-anchor": "middle"
+      })
+      .text("S");
   }
 
 });

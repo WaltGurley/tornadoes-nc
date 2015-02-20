@@ -1,8 +1,9 @@
-.start-of-page{
-  margin-top: 50px;
+body {
+  color: #f8f8f8;
+  background-color: #111;
 }
 
-#map {
+.vis {
   height: 50vh;
 }
 
@@ -11,13 +12,8 @@
 }
 
 .key-svg {
-  width: 100%;
+  width: 25%;
   height: 40vh;
-}
-
-.key-title{,
-  alignment-baseline: central;
-  font-weight: bold;
 }
 
 .check-box {
@@ -26,11 +22,32 @@
   cursor: pointer;
 }
 
-.compass-svg {
+.graph-svg {
   width: 100%;
-  height: 40vh;
+  height: 100%
 }
 
-.axis {
-  opacity: 0.6;
+.graph-axis{
+  stroke: #fff;
+  stroke-width: 2px;
+  fill: none;
+}
+
+.graph-axis text{
+  fill: #f8f8f8;
+  stroke: none;
+}
+
+.compass-svg {
+  width: 100%;
+  height: 100%
+}
+
+.axis-line {
+  opacity: 0.1;
+}
+
+.svg-text {
+  font-size: 16px;
+  fill: #fff;
 }
