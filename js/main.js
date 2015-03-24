@@ -107,10 +107,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
   var timeFormat = d3.time.format("%j"),
     tornadoDay = d3.nest()
       .key(function(d) { return parseInt(timeFormat(new Date(d.DATE))); })
-      .map(tornadoes.features.map(function(d) { return d.properties; }) )
-      // .filter(function(s) {
-      //   return new Date(s.DATE) < new Date("Dec 31, 2") ;
-      // });
+      .map(tornadoes.features.map(function(d) { return d.properties; }) );
 
 
   var compass = d3.select("#pathCompass").append("svg").attr("class", "compass-svg"),
