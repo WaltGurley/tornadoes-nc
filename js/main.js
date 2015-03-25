@@ -324,26 +324,59 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
       .attr({
         "class": "date-slider",
         "type": "range",
-        "min": +new Date(d3.keys(tornadoDate)[0]),
+        "min": +new Date("May 11 1950 23:59:59"),
         "max": +new Date(d3.keys(tornadoDate)[d3.keys(tornadoDate).length - 1]),
+        "step": 86400000,
         "value": sliderDate
       });
+
+    makeSliderScale();
+
+    //Make slider scale
+    function makeSliderScale() {
+      var sliderScale = d3.select(".slider-scale").append("svg")
+          .attr({
+            "class": "slider-scale-svg",
+            "width": parseInt(dateSlider.style("width")),
+            "height": 30
+            // "shape-rendering": "crispEdges"
+          });
+
+      var timeScale = d3.time.scale()
+        .domain([
+          new Date("May 11 1950 23:59:59"),
+          new Date(d3.keys(tornadoDate)[d3.keys(tornadoDate).length - 1])
+        ])
+        .range([8, parseInt(dateSlider.style("width")) - 8]); //take width of slider-thumb into account for padding
+      var xAxis = d3.svg.axis()
+        .scale(timeScale)
+        .tickFormat(d3.time.format("%Y"))
+        .ticks(d3.time.years, 4)
+        .orient("bottom");
+
+        sliderScale.append("g")
+        .attr("class", "slider-axis")
+    		.attr("transform", "translate(0,8)")
+        .call(xAxis);
+    }
 
     //Draw everything
     updateVis(sliderDate);
 
     //Filter and update data based on slider position
     var sliderTextFormat = d3.time.format("%b %d, %Y");
-    dateSlider.on("mousemove", function() {
+    dateSlider.on("input", function() {
       sliderDate = this.value;
 
       d3.select(".slider-text")
         .text(sliderTextFormat(new Date(parseInt(sliderDate))));
 
+      console.log(sliderDate)
+
       tornadoGeo.classed("dateOff", function(d) {
-        return new Date(d.properties.DATE) > new Date(parseInt(sliderDate)); });
+        return new Date(d.properties.DATE) >= new Date(parseInt(sliderDate)); });
       tornadoComp.classed("dateOff", function(d) {
-        return new Date(d.properties.DATE) > new Date(parseInt(sliderDate)); });
+        return new Date(d.properties.DATE) >= new Date(parseInt(sliderDate)); });
 
       updateVis(sliderDate);
     });
@@ -386,7 +419,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
 
     //Filter tornado graph data to change bar height
     function filterByDate(torDate) {
-      return new Date(torDate.DATE) < new Date(parseInt(date));
+      return new Date(torDate.DATE) <= new Date(parseInt(date));
     }
 
   }
