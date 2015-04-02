@@ -1,6 +1,7 @@
 var southWest = L.latLng(33.5, -85),
   northEast = L.latLng(37, -75),
-  bounds = L.latLngBounds(southWest, northEast);
+  bounds = L.latLngBounds(southWest, northEast),
+  autoPlay; // where the setInterval function is stored (play/stop graphics)
 
 var map = L.map("map", {
   // center: [35.7806, -78.6389],
@@ -55,9 +56,14 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
       "stroke": function(d) { return seasonColor(d.properties.SEASON); },
       "opacity": 1
     }),
-    tornadoComp,
-    tornadoGraph,
-    sliderDate;
+    tornadoComp, // SVG displaying tornado path direction
+    tornadoGraph; // SVG displaying bar graph of tornadoes by day of year
+
+  //Create variables that several functions need from slider
+  var sliderDate, // the position of the slider (used for all graphics)
+    cumulative = true, // true = show cumulative data, false = show daily data
+    autoPlaySpeed = 5, // store speed of autoplay (in milliseconds)
+    tornadoDateRange; // min and max date of data
 
   updateView();
   map.on("viewreset", updateView);
@@ -104,7 +110,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     graphPaddingHor = 15,
     maxLength; //Holder for count of tornadoes occurring on most active day
 
-  var timeFormat = d3.time.format("%j"),
+  var timeFormat = d3.time.format("%j");
     tornadoDay = d3.nest()
       .key(function(d) { return parseInt(timeFormat(new Date(d.DATE))); })
       .map(tornadoes.features.map(function(d) { return d.properties; }) );
@@ -317,20 +323,34 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
       .key(function(d) { return dateFormat(new Date(d.DATE)); })
       .map(tornadoes.features.map(function(d) { return d.properties; }) );
 
-    sliderDate = +new Date(d3.keys(tornadoDate)[d3.keys(tornadoDate).length - 1]);
+    tornadoDateRange = d3.extent(d3.keys(tornadoDate));
+
+    sliderDate = +new Date(tornadoDateRange[1]);
 
     var dateSlider = d3.select("#slider")
       .append("input")
       .attr({
         "class": "date-slider",
         "type": "range",
-        "min": +new Date("May 11 1950 23:59:59"),
-        "max": +new Date(d3.keys(tornadoDate)[d3.keys(tornadoDate).length - 1]),
+        "min": +new Date(tornadoDateRange[0]),
+        "max": +new Date(tornadoDateRange[1]),
         "step": 86400000,
         "value": sliderDate
       });
 
+    //Update data based on slider position
+    dateSlider.on("input", function() {
+      sliderDate = parseInt(this.value);
+      clearInterval(autoPlay);
+      d3.select(".play-btn").classed("fontawesome-pause", false);
+      d3.select(".play-btn").classed("fontawesome-play", true);
+      updateVis(sliderDate);
+    });
+
+    //Finish slider setup and draw everything after
     makeSliderScale();
+    setupSliderControls();
+    updateVis(sliderDate);
 
     //Make slider scale
     function makeSliderScale() {
@@ -344,11 +364,11 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
 
       var timeScale = d3.time.scale()
         .domain([
-          new Date("May 11 1950 23:59:59"),
-          new Date(d3.keys(tornadoDate)[d3.keys(tornadoDate).length - 1])
+          new Date(tornadoDateRange[0]),
+          new Date(tornadoDateRange[1])
         ])
         .range([8, parseInt(dateSlider.style("width")) - 8]); //take width of slider-thumb into account for padding
-      var xAxis = d3.svg.axis()
+      var xAxisSlider = d3.svg.axis()
         .scale(timeScale)
         .tickFormat(d3.time.format("%Y"))
         .ticks(d3.time.years, 4)
@@ -357,50 +377,128 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
         sliderScale.append("g")
         .attr("class", "slider-axis")
     		.attr("transform", "translate(0,8)")
-        .call(xAxis);
+        .call(xAxisSlider);
     }
 
-    //Draw everything
-    updateVis(sliderDate);
+    //Set up controls to play, speed up, and change view type with slider
+    function setupSliderControls() {
+      var viewControls = d3.selectAll(".view-type-btn");
 
-    //Filter and update data based on slider position
-    var sliderTextFormat = d3.time.format("%b %d, %Y");
-    dateSlider.on("input", function() {
-      sliderDate = this.value;
+      //Toggle view from cumulative tornadoes to daily tornadoes
+      viewControls.on("click", function() {
+        var pressedBtn = d3.select(this);
 
-      d3.select(".slider-text")
-        .text(sliderTextFormat(new Date(parseInt(sliderDate))));
+        viewControls.classed("active", false);
+        pressedBtn.classed("active", true);
 
-      console.log(sliderDate)
+        if (pressedBtn.text() === "Cumulative") {
+          cumulative = true;
+        } else if (pressedBtn.text() === "Daily") {
+          cumulative = false;
+        }
 
-      tornadoGeo.classed("dateOff", function(d) {
-        return new Date(d.properties.DATE) >= new Date(parseInt(sliderDate)); });
-      tornadoComp.classed("dateOff", function(d) {
-        return new Date(d.properties.DATE) >= new Date(parseInt(sliderDate)); });
+        updateVis(sliderDate);
+      });
 
-      updateVis(sliderDate);
-    });
+      //Toggle autoplay on and off (Play/Pause)
+      d3.select(".play-btn").on("click", function() {
+        var state = d3.select(this);
+
+        if (state.classed("fontawesome-play")) {
+          state.classed("fontawesome-play", false);
+          state.classed("fontawesome-pause", true);
+          autoPlay = setInterval(function() {
+            if (dateFormat(new Date(sliderDate)) ===
+            dateFormat(new Date(tornadoDateRange[1]))) {
+              sliderDate = +new Date(tornadoDateRange[0]);
+            } else {
+              sliderDate += 86400000;
+            }
+            d3.select(".date-slider").property("value", sliderDate);
+            updateVis(sliderDate);
+          }, autoPlaySpeed);
+        } else if (state.classed("fontawesome-pause")) {
+          state.classed("fontawesome-pause", false);
+          state.classed("fontawesome-play", true);
+          clearInterval(autoPlay);
+        }
+      });
+
+      //Set speed of transitions
+      d3.select(".speed-btn").on("click", function() {
+        var state = d3.select(this);
+
+        if (autoPlaySpeed <= 5) {
+          autoPlaySpeed = 1280;
+          state.selectAll("span").remove();
+          state.append("span").attr("class","fontawesome-chevron-right");
+        } else {
+          autoPlaySpeed /= 4;
+          state.append("span").attr("class","fontawesome-chevron-right");
+        }
+
+        if (d3.select(".play-btn").classed("fontawesome-pause")) {
+          clearInterval(autoPlay);
+          autoPlay = setInterval(function() {
+            if (dateFormat(new Date(sliderDate)) ===
+            dateFormat(new Date(tornadoDateRange[1]))) {
+              sliderDate = +new Date(tornadoDateRange[0]);
+            } else {
+              sliderDate += 86400000;
+            }
+            d3.select(".date-slider").property("value", sliderDate);
+            updateVis(sliderDate);
+          }, autoPlaySpeed);
+        }
+      });
+    }
   }
 
   //Animate map, graph, and compass on data filter change (date or season)
   function updateVis(date) {
+    var sliderTextFormat = d3.time.format("%b %d, %Y"),
+    dateFormat = d3.time.format("%Y-%m-%d");
+
+    d3.select(".slider-text")
+      .text(cumulative ?
+        sliderTextFormat(new Date(tornadoDateRange[0])) + " - " +
+        sliderTextFormat(new Date(date))
+        :
+        sliderTextFormat(new Date(date))
+      );
+
+    tornadoGeo.classed("dateOff", function(d) {
+      return cumulative ?
+        new Date(d.properties.DATE) >= new Date(date)
+        :
+        dateFormat(new Date(d.properties.DATE)) !==
+        dateFormat(new Date(date));
+    });
+
+    tornadoComp.classed("dateOff", function(d) {
+      return cumulative ?
+        new Date(d.properties.DATE) >= new Date(date)
+        :
+        dateFormat(new Date(d.properties.DATE)) !==
+        dateFormat(new Date(date));
+    });
 
     //Remove lines from map that have not occured before slider 'date'
-    tornadoGeo.transition()
+    tornadoGeo.transition().duration(autoPlaySpeed)
       .attr("stroke-dashoffset", function(d) {
         return d3.select(this).classed("dateOff") ||
           d3.select(this).classed("seasonOff") ? this.getTotalLength() : 0;
       });
 
     //Remove lines from compass that have not occured before slider 'date'
-    tornadoComp.transition()
+    tornadoComp.transition().duration(autoPlaySpeed)
       .attr("width", function(d) { return d3.select(this).classed("dateOff") ||
         d3.select(this).classed("seasonOff") ?
         0 : (d.properties.MAG_INT + 1) / 5 * minorLength / 2 - 10;
       });
 
     //Change bar graph height to reflect tornados occuring before slider 'date'
-    tornadoGraph.transition()
+    tornadoGraph.transition().duration(autoPlaySpeed)
       .attr({
         "y": function(d) {
           return d3.select(this).classed("seasonOff") ?
@@ -419,7 +517,11 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
 
     //Filter tornado graph data to change bar height
     function filterByDate(torDate) {
-      return new Date(torDate.DATE) <= new Date(parseInt(date));
+      var dateFormat = d3.time.format("%Y-%m-%d");
+      return cumulative ?
+      new Date(torDate.DATE) <= new Date(date) :
+      dateFormat(new Date(torDate.DATE)) ===
+      dateFormat(new Date(date));
     }
 
   }
