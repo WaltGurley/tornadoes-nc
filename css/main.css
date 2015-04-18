@@ -11,6 +11,26 @@ body {
   font-family: 'Oswald', sans-serif;
 }
 
+.Spring {
+  stroke: #00c99a;
+  fill: #00c99a;
+}
+
+.Summer {
+  stroke: #fbd528;
+  fill: #fbd528;
+}
+
+.Fall {
+  stroke: #ff5500;
+  fill: #ff5500;
+}
+
+.Winter {
+  stroke: #425e89;
+  fill: #425e89;
+}
+
 .vis {
   height: 50vh;
 }
@@ -44,6 +64,17 @@ body {
 
 .graph-axis text{
   fill: #f8f8f8;
+  stroke: none;
+}
+
+.day-pointer1 {
+  fill: #f0f;
+  stroke: none;
+}
+
+.day-pointer2 {
+  fill: #f0f;
+  opacity: 0.2;
   stroke: none;
 }
 
@@ -116,6 +147,8 @@ body {
 
 .view-type-btn, .faded {
   color: #555;
+  fill: #555;
+  stroke: #555;
 }
 
 .active {

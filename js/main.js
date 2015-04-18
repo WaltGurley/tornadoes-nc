@@ -23,6 +23,11 @@ var svg = d3.select(map.getPanes().overlayPane).append("svg"),
 
 //Load geojson data and process and add to map
 d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
+
+  filteredTornadoes = tornadoes.features.filter(function(d) {
+    return new Date(d.properties.DATE) >= new Date(1980,0,1);
+  });
+
   //This function projects the tornado path data into Leaflet Lat/Lon
   function projectPoint(x, y) {
     var point = map.latLngToLayerPoint(new L.LatLng(y, x));
@@ -33,27 +38,13 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
   var transform = d3.geo.transform({point: projectPoint}),
     tornadoPaths = d3.geo.path().projection(transform);
 
-  //Color tornado paths based on season
-  function seasonColor(season) {
-    if (season === "Spring") {
-      return "#00c99a";
-    } else if (season === "Summer") {
-      return "#fbd528";
-    } else if (season === "Fall") {
-      return "#ff5500";
-    } else if (season === "Winter") {
-      return "#425e89";
-    }
-  }
-
   //Create tornado geo paths and create empty variables for compass and graph
   // svg data
   var tornadoGeo = g.selectAll("path")
-    .data(tornadoes.features)
+    .data(filteredTornadoes)
     .enter().append("path")
     .attr({
       "class": function(d) { return "toggle tornado-path " + d.properties.SEASON; },
-      "stroke": function(d) { return seasonColor(d.properties.SEASON); },
       "opacity": 1
     }),
     tornadoComp, // SVG displaying tornado path direction
@@ -110,10 +101,15 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     graphPaddingHor = 15,
     maxLength; //Holder for count of tornadoes occurring on most active day
 
+  // Scale used to place marker on graph for day of year
+  var timeOfYearScale = d3.scale.linear()
+    .domain([0, 366])
+    .range([graphPaddingHor, graphWidth - graphPaddingHor]);
+
   var timeFormat = d3.time.format("%j");
     tornadoDay = d3.nest()
       .key(function(d) { return parseInt(timeFormat(new Date(d.DATE))); })
-      .map(tornadoes.features.map(function(d) { return d.properties; }) );
+      .map(filteredTornadoes.map(function(d) { return d.properties; }) );
 
 
   var compass = d3.select("#pathCompass").append("svg").attr("class", "compass-svg"),
@@ -124,15 +120,16 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
 
   //Filter data to select only tornadoes with start/stop lat/lon coordinates
   //for tornado degree direction
-  var directionData = tornadoes.features.filter(function(d) {
+  var directionData = filteredTornadoes.filter(function(d) {
     return d.properties.ELAT !== "0.0";
   });
 
   createKey();
   createGraph();
   createCompass();
-  makeSlider();
+  createSlider();
 
+  //Create key for indicating seasonal data and toggling seasonal data on/off
   function createKey() {
     var seasons = ["Spring", "Summer", "Fall", "Winter"],
       xPadding = 10, yPadding = 10,
@@ -152,7 +149,6 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
         "y": yPadding,
         "rx": 5,
         "ry": 5,
-        "fill": function(d) { return seasonColor(d); },
         "width": boxSide,
         "height": boxSide
       });
@@ -160,9 +156,9 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     //Add map symbol
     keyItem.append("rect")
       .attr({
+        "class": function(d) { return "legend " + d; },
         "x": xPadding * 2 + boxSide,
         "y": yPadding + boxSide / 2 - 2,
-        "fill": function(d) { return seasonColor(d); },
         "width": 30,
         "height": 4
       });
@@ -181,17 +177,19 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     d3.selectAll(".check-box")
     .on("click", function() {
       var box = d3.select(this),
-      color = seasonColor(box.datum());
+      color = box.datum();
 
-      if (box.attr("fill") === "#fff") {
-        box.attr("fill", color);
+      if (box.classed("faded")) {
+        box.classed(color, true);
+        box.classed("faded", false);
         d3.selectAll(".tornado-path." + box.datum()).classed("seasonOff", false);
         d3.selectAll(".compass-path." + box.datum()).classed("seasonOff", false);
 
         d3.selectAll(".graph-path." + box.datum()).classed("seasonOff", false);
 
       } else {
-        box.attr("fill", "#fff");
+        box.classed(color, false);
+        box.classed("faded", true);
         d3.selectAll(".tornado-path." + box.datum()).classed("seasonOff", true);
         d3.selectAll(".compass-path." + box.datum()).classed("seasonOff", true);
         d3.selectAll(".graph-path." + box.datum()).classed("seasonOff", true);
@@ -201,8 +199,8 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     });
   }
 
+  //Create bar graph of tornadoes by day of year (0-366)
   function createGraph() {
-    //Create bar graph of tornadoes by day of year (0-366)
     //Set up axes for graph
     var timeScale = d3.time.scale()
       .domain([new Date(2012, 0, 1), new Date(2012, 11, 31)])
@@ -223,8 +221,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
           "x": function(d) {
             return (graphWidth - graphPaddingHor * 2) / 366 * d.key + graphPaddingHor;
           },
-          "width": (graphWidth - graphPaddingHor * 2) / 366,
-          "fill": function(d) { return seasonColor(d.value[0].SEASON); }
+          "width": (graphWidth - graphPaddingHor * 2) / 366
         });
 
     graph.append("g")
@@ -232,10 +229,28 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
   		.attr("transform", "translate(0," + (graphHeight - graphPaddingVert) + ")")
       .call(xAxis);
 
+    graph.append("rect")
+      .attr({
+        "class": "day-pointer2",
+        "width": (graphWidth - graphPaddingHor * 2) / 366,
+        "height": graphHeight - graphPaddingVert,
+        "y": 0,
+        "x": graphPaddingHor
+      });
+
+    // var barWidth = (graphWidth - graphPaddingHor * 2) / 366;
+    // d3.select(".graph-axis")
+    //   .append("path")
+    //   .attr({
+    //     "class": "day-pointer1",
+    //     "d": "M" + barWidth  + ",0 L" + barWidth * 2 + ",0 L" + barWidth * 4 +
+    //      ",6 L" + -barWidth + ",6 Z",
+    //     "transform": "translate(" + (graphPaddingHor - 3) + ",0)"
+    //   });
   }
 
+  //Add paths to diagram showing direction relative to compass
   function createCompass() {
-    //Add paths to diagram showing direction relative to compass
     tornadoComp = compass.selectAll("rect")
       .data(directionData)
       .enter().append("rect")
@@ -246,8 +261,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
         "height": rectHeight,
         "transform": function(d) { return "rotate(" +
           -d.properties.ANGLE * (180 / Math.PI) + "," +
-          compassWidth / 2 + "," + compassHeight / 2 + ")"; },
-        "fill": function(d) { return seasonColor(d.properties.SEASON); }
+          compassWidth / 2 + "," + compassHeight / 2 + ")"; }
       });
 
     //Add NS and EW axes
@@ -317,11 +331,12 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
       .text("S");
   }
 
-  function makeSlider() {
+  //Create slider to change data based on date
+  function createSlider() {
     var dateFormat = d3.time.format("%Y-%m-%d"),
     tornadoDate = d3.nest()
       .key(function(d) { return dateFormat(new Date(d.DATE)); })
-      .map(tornadoes.features.map(function(d) { return d.properties; }) );
+      .map(filteredTornadoes.map(function(d) { return d.properties; }) );
 
     tornadoDateRange = d3.extent(d3.keys(tornadoDate));
 
@@ -454,10 +469,11 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     }
   }
 
-  //Animate map, graph, and compass on data filter change (date or season)
+  //Animate map, graph, and compass on data filter change (date/slider or season)
   function updateVis(date) {
     var sliderTextFormat = d3.time.format("%b %d, %Y"),
-    dateFormat = d3.time.format("%Y-%m-%d");
+    dateFormat = d3.time.format("%Y-%m-%d"),
+    dayOfYearFormat = d3.time.format("%j");
 
     d3.select(".slider-text")
       .text(cumulative ?
@@ -492,9 +508,10 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
 
     //Remove lines from compass that have not occured before slider 'date'
     tornadoComp.transition().duration(autoPlaySpeed)
-      .attr("width", function(d) { return d3.select(this).classed("dateOff") ||
-        d3.select(this).classed("seasonOff") ?
-        0 : (d.properties.MAG_INT + 1) / 5 * minorLength / 2 - 10;
+      .attr("width", function(d) {
+        return d3.select(this).classed("dateOff") ||
+          d3.select(this).classed("seasonOff") ?
+          0 : (d.properties.MAG_INT + 1) / 5 * minorLength / 2 - 10;
       });
 
     //Change bar graph height to reflect tornados occuring before slider 'date'
@@ -514,6 +531,14 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
             (d.value.filter(filterByDate).length / maxLength);
         }
       });
+
+    d3.select(".day-pointer1").transition().duration(autoPlaySpeed)
+      .attr("transform", "translate(" +
+        (timeOfYearScale(dayOfYearFormat(new Date(date))) - 3) + ",0)"
+      );
+
+    d3.select(".day-pointer2").transition().duration(autoPlaySpeed)
+      .attr("x", (timeOfYearScale(dayOfYearFormat(new Date(date)))));
 
     //Filter tornado graph data to change bar height
     function filterByDate(torDate) {
