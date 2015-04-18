@@ -107,9 +107,9 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     .range([graphPaddingHor, graphWidth - graphPaddingHor]);
 
   var timeFormat = d3.time.format("%j");
-    tornadoDay = d3.nest()
-      .key(function(d) { return parseInt(timeFormat(new Date(d.DATE))); })
-      .map(filteredTornadoes.map(function(d) { return d.properties; }) );
+  tornadoDay = d3.nest()
+    .key(function(d) { return parseInt(timeFormat(new Date(d.DATE))); })
+    .map(filteredTornadoes.map(function(d) { return d.properties; }) );
 
 
   var compass = d3.select("#pathCompass").append("svg").attr("class", "compass-svg"),
@@ -471,6 +471,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
 
   //Animate map, graph, and compass on data filter change (date/slider or season)
   function updateVis(date) {
+
     var sliderTextFormat = d3.time.format("%b %d, %Y"),
     dateFormat = d3.time.format("%Y-%m-%d"),
     dayOfYearFormat = d3.time.format("%j");
@@ -485,17 +486,17 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
 
     tornadoGeo.classed("dateOff", function(d) {
       return cumulative ?
-        new Date(d.properties.DATE) >= new Date(date)
+        new Date(d.properties.DATE + " EST") >= new Date(date)
         :
-        dateFormat(new Date(d.properties.DATE)) !==
+        dateFormat(new Date(d.properties.DATE + " EST")) !==
         dateFormat(new Date(date));
     });
 
     tornadoComp.classed("dateOff", function(d) {
       return cumulative ?
-        new Date(d.properties.DATE) >= new Date(date)
+        new Date(d.properties.DATE + " EST") >= new Date(date)
         :
-        dateFormat(new Date(d.properties.DATE)) !==
+        dateFormat(new Date(d.properties.DATE + " EST")) !==
         dateFormat(new Date(date));
     });
 
@@ -544,8 +545,8 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     function filterByDate(torDate) {
       var dateFormat = d3.time.format("%Y-%m-%d");
       return cumulative ?
-      new Date(torDate.DATE) <= new Date(date) :
-      dateFormat(new Date(torDate.DATE)) ===
+      new Date(torDate.DATE + " EST") <= new Date(date) :
+      dateFormat(new Date(torDate.DATE + " EST")) ===
       dateFormat(new Date(date));
     }
 
