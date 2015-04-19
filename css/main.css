@@ -103,6 +103,7 @@ body {
   -moz-appearance: none;
   -webkit-appearance: none;
   height: 0;
+  cursor: pointer;
 }
 
 .date-slider::-webkit-slider-thumb {

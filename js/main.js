@@ -386,7 +386,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
       var xAxisSlider = d3.svg.axis()
         .scale(timeScale)
         .tickFormat(d3.time.format("%Y"))
-        .ticks(d3.time.years, 4)
+        .ticks(d3.time.years, 2)
         .orient("bottom");
 
         sliderScale.append("g")
@@ -486,17 +486,17 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
 
     tornadoGeo.classed("dateOff", function(d) {
       return cumulative ?
-        new Date(d.properties.DATE + " EST") >= new Date(date)
+        new Date(d.properties.DATE + "T00:00:00-05:00") >= new Date(date)
         :
-        dateFormat(new Date(d.properties.DATE + " EST")) !==
+        dateFormat(new Date(d.properties.DATE + "T00:00:00-05:00")) !==
         dateFormat(new Date(date));
     });
 
     tornadoComp.classed("dateOff", function(d) {
       return cumulative ?
-        new Date(d.properties.DATE + " EST") >= new Date(date)
+        new Date(d.properties.DATE + "T00:00:00-05:00") >= new Date(date)
         :
-        dateFormat(new Date(d.properties.DATE + " EST")) !==
+        dateFormat(new Date(d.properties.DATE + "T00:00:00-05:00")) !==
         dateFormat(new Date(date));
     });
 
@@ -545,8 +545,8 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
     function filterByDate(torDate) {
       var dateFormat = d3.time.format("%Y-%m-%d");
       return cumulative ?
-      new Date(torDate.DATE + " EST") <= new Date(date) :
-      dateFormat(new Date(torDate.DATE + " EST")) ===
+      new Date(torDate.DATE + "T00:00:00-05:00") <= new Date(date) :
+      dateFormat(new Date(torDate.DATE + "T00:00:00-05:00")) ===
       dateFormat(new Date(date));
     }
 
