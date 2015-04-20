@@ -422,20 +422,11 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
         if (state.classed("fontawesome-play")) {
           state.classed("fontawesome-play", false);
           state.classed("fontawesome-pause", true);
-          autoPlay = setInterval(function() {
-            if (dateFormat(new Date(sliderDate)) ===
-            dateFormat(new Date(tornadoDateRange[1]))) {
-              sliderDate = +new Date(tornadoDateRange[0]);
-            } else {
-              sliderDate += 86400000;
-            }
-            d3.select(".date-slider").property("value", sliderDate);
-            updateVis(sliderDate);
-          }, autoPlaySpeed);
+          animateAll();
         } else if (state.classed("fontawesome-pause")) {
           state.classed("fontawesome-pause", false);
           state.classed("fontawesome-play", true);
-          clearInterval(autoPlay);
+          clearTimeout(autoPlay);
         }
       });
 
@@ -453,19 +444,25 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
         }
 
         if (d3.select(".play-btn").classed("fontawesome-pause")) {
-          clearInterval(autoPlay);
-          autoPlay = setInterval(function() {
-            if (dateFormat(new Date(sliderDate)) ===
-            dateFormat(new Date(tornadoDateRange[1]))) {
-              sliderDate = +new Date(tornadoDateRange[0]);
-            } else {
-              sliderDate += 86400000;
-            }
-            d3.select(".date-slider").property("value", sliderDate);
-            updateVis(sliderDate);
-          }, autoPlaySpeed);
+          clearTimeout(autoPlay);
+          animateAll();
         }
       });
+
+      function animateAll() {
+        autoPlay = setTimeout(function() {
+          if (dateFormat(new Date(sliderDate)) ===
+          dateFormat(new Date(tornadoDateRange[1]))) {
+            sliderDate = +new Date(tornadoDateRange[0]);
+          } else {
+            sliderDate += 86400000;
+          }
+          d3.select(".date-slider").property("value", sliderDate);
+          updateVis(sliderDate);
+          console.log(autoPlay);
+          animateAll();
+        }, autoPlaySpeed);
+      }
     }
   }
 

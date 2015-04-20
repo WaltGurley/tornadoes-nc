@@ -1,5 +1,3 @@
-@import url(http://weloveiconfonts.com/api/?family=fontawesome);
-
 /* fontawesome */
 [class*="fontawesome-"]:before {
   font-family: 'FontAwesome', sans-serif;
@@ -143,6 +141,8 @@ body {
 .control:hover {
   color: #ff2a2a;
   -webkit-transition: color 0.5s;
+  -moz-transition: color 0.5s;
+  -o-transition: color 0.5s;
   transition: color 0.5s;
 }
 
