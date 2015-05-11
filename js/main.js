@@ -386,7 +386,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
       var xAxisSlider = d3.svg.axis()
         .scale(timeScale)
         .tickFormat(d3.time.format("%Y"))
-        .ticks(d3.time.years, 2)
+        .ticks(d3.time.years, window.innerWidth <= 480 ? 4 : 2)
         .orient("bottom");
 
         sliderScale.append("g")
@@ -459,7 +459,6 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
           }
           d3.select(".date-slider").property("value", sliderDate);
           updateVis(sliderDate);
-          console.log(autoPlay);
           animateAll();
         }, autoPlaySpeed);
       }
