@@ -373,8 +373,7 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
           .attr({
             "class": "slider-scale-svg",
             "width": parseInt(dateSlider.style("width")),
-            "height": 30
-            // "shape-rendering": "crispEdges"
+            "height": 34
           });
 
       var timeScale = d3.time.scale()
@@ -382,17 +381,49 @@ d3.json("js/TorNCwgs84estTZ.geojson", function(tornadoes) {
           new Date(tornadoDateRange[0]),
           new Date(tornadoDateRange[1])
         ])
-        .range([8, parseInt(dateSlider.style("width")) - 8]); //take width of slider-thumb into account for padding
+        .range([12, parseInt(dateSlider.style("width")) - 12]); //take width of slider-thumb into account for padding
+
+      //create x-axis label for time slider (label by year)
       var xAxisSlider = d3.svg.axis()
         .scale(timeScale)
         .tickFormat(d3.time.format("%Y"))
         .ticks(d3.time.years, 2)
         .orient("bottom");
 
-        sliderScale.append("g")
+      //add lines to indicate dates with tornado(es)
+      sliderScale.selectAll("rect")
+        .data(d3.entries(tornadoDate))
+        .enter().append("rect")
+        .attr({
+          "class": function(d) { return d.value[0].SEASON; },
+          "x": function(d) { return timeScale(new Date(d.key)); },
+          "y": 0,
+          "height": 12,
+          "width": 1,
+        });
+
+      //add callouts for significant events
+      var sigEventDates = ["1984-03-28", "1988-11-28", "1989-05-05", "1992-11-23", "1998-03-20", "2008-05-08", "2010-03-28", "2011-04-16", "2012-03-03", "2013-11-26"];
+
+      var sigEvents = sliderScale.append("g").attr("transform", "translate(0,12)");
+
+      sigEvents.selectAll("sig-event")
+        .data(sigEventDates)
+        .enter().append("rect")
+        .attr({
+          "class": "sig-event",
+          "x": function(d) { return timeScale(new Date(d)); },
+          "height": 24,
+          "width": 2,
+          "fill": "#ff2a2a"
+        });
+
+      //add time scale labeled by year (xAxisSlider)
+      sliderScale.append("g")
         .attr("class", "slider-axis")
-    		.attr("transform", "translate(0,8)")
+    		.attr("transform", "translate(0,12)")
         .call(xAxisSlider);
+
     }
 
     //Set up controls to play, speed up, and change view type with slider
